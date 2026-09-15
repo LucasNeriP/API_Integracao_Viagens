@@ -3,6 +3,8 @@ class RotaIntegration:
         return "trip_id" in viagem
 
     def normalizar(self, viagem: dict):
+
+        valor = viagem["tarifa_centavos"] / 100
         return {
             "id_viagem": viagem["trip_id"],
             "empresa": "Rota Transportes",
@@ -17,5 +19,14 @@ class RotaIntegration:
 
             "partida": viagem["partida_em"],
             "chegada": viagem["chegada_em"],
-            "duracao_minutos": viagem["duracao_minutos"]
+            "duracao_minutos": viagem["duracao_minutos"],
+
+            "preço": {
+                "valor": valor,
+                "moeda": viagem["moeda"]
+            },
+
+            "categoria": viagem["classe"].lower(),
+
+            "assentos_disponiveis": viagem["vagas"]
         }

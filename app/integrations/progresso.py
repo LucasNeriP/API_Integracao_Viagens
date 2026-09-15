@@ -25,6 +25,10 @@ class ProgressoIntegration:
         horas, minutos = viagem["tempoEstimado"].split(":")
         duracao_minutos = int(horas) * 60 + int(minutos)
 
+        valor = float(
+            viagem["valorPassagem"].replace(",", ".")
+        )
+
         return {
             "id_viagem": viagem["codigoViagem"],
             "empresa": "Auto Viação Progresso",
@@ -40,6 +44,15 @@ class ProgressoIntegration:
 
             "partida": partida.isoformat(),
             "chegada": chegada.isoformat(),
-            "duracao_minutos": duracao_minutos
+            "duracao_minutos": duracao_minutos,
+
+            "preço": {
+                "valor": valor,
+                "moeda": "BRL"
+            },
+
+            "categoria": viagem["tipoServico"].lower(),
+
+            "assentos_disponiveis": int(viagem["assentosDisponiveis"])
 
         }
