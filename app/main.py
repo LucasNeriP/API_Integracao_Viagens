@@ -8,9 +8,11 @@ def inicio():
     return {"message": "Bem-vindo à API de Integração de Viagens!"}
 
 @app.post("/api/v1/viagens/normalizar")
-
 def normalizar_viagem(viagens: list[dict]):
+    viagens_normalizadas = []
     for viagem in viagens:
         integracao = identificar_integracao(viagem)
-        print(integracao.normalizar(viagem))
-    return viagens    
+        viagem_normalizada = integracao.normalizar(viagem)
+
+        viagens_normalizadas.append(viagem_normalizada)
+    return viagens_normalizadas 
