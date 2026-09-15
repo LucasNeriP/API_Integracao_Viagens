@@ -1,7 +1,11 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-class ProgressoIntegration:
+from app.integrations.base import IntegracaoBase
+from app.integrations.decorators import registrar_integracao
+
+@registrar_integracao
+class ProgressoIntegration(IntegracaoBase):
     nome_empresa = "Auto Viação Progresso"
 
     def reconhecer(self, viagem: dict):

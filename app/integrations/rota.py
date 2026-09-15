@@ -1,4 +1,8 @@
-class RotaIntegration:
+from app.integrations.base import IntegracaoBase
+from app.integrations.decorators import registrar_integracao
+
+@registrar_integracao
+class RotaIntegration(IntegracaoBase):
     nome_empresa = "Rota Transportes"
 
     def reconhecer(self, viagem: dict):

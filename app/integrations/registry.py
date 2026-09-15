@@ -1,13 +1,8 @@
-from app.integrations.progresso import ProgressoIntegration
-from app.integrations.rota import RotaIntegration
-
-integracoes = [
-    ProgressoIntegration(),
-    RotaIntegration()
-]
+from app.integrations import progresso, rota
+from app.integrations.decorators import obter_integracoes_registradas
 
 def identificar_integracao(viagem: dict):
-    for integracao in integracoes:
+    for integracao in obter_integracoes_registradas:
         if integracao.reconhecer(viagem):
             return integracao
     return None    
