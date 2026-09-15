@@ -4,6 +4,13 @@ from zoneinfo import ZoneInfo
 from app.integrations.base import IntegracaoBase
 from app.integrations.decorators import registrar_integracao
 
+CATEGORIAS = {
+    "executivo": "executivo",
+    "convencional": "convencional",
+    "semi-leito": "semileito",
+    "leito": "leito"
+}
+
 @registrar_integracao
 class ProgressoIntegration(IntegracaoBase):
     nome_empresa = "Auto Viação Progresso"
@@ -35,6 +42,9 @@ class ProgressoIntegration(IntegracaoBase):
             viagem["valorPassagem"].replace(",", ".")
         )
 
+        categoria_bruta = viagem["classe"].lower()
+        categoria = CATEGORIAS.get(categoria_bruta, categoria_bruta)
+
         return {
             "id_viagem": viagem["codigoViagem"],
             "empresa": "Auto Viação Progresso",
@@ -57,7 +67,7 @@ class ProgressoIntegration(IntegracaoBase):
                 "moeda": "BRL"
             },
 
-            "categoria": viagem["tipoServico"].lower(),
+            "categoria": categoria,
 
             "assentos_disponiveis": int(viagem["assentosDisponiveis"])
 
