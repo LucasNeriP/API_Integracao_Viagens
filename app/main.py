@@ -1,10 +1,37 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
-from app.integrations.registry import identificar_integracao
-from app.exceptions import ViagemInvalidaError
+import app.integrations  # noqa: F401  # carrega e registra as estratégias
+from app.exceptions import FalhaNaNormalizacao
+from app.schemas import RespostaNormalizacao
+from app.servico import processar_viagens
+
+app = FastAPI(
+    title="API de Integração de Viagens",
+    description=(
+        "Recebe viagens de companhias distintas, identifica a origem "
+        "pela estrutura do payload e devolve um contrato homogêneo."
+    ),
+    version="1.0.0",
+)
 
 
-app = FastAPI()
+@app.exception_handler(FalhaNaNormalizacao)
+async def tratar_falha_na_normalizacao(
+    request: Request,
+    erro: FalhaNaNormalizacao,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": {
+                "indice": erro.indice,
+                "empresa_identificada": erro.empresa_identificada,
+                "campo": erro.campo,
+                "mensagem": erro.mensagem,
+            }
+        },
+    )
 
 
 @app.get("/")
@@ -14,41 +41,6 @@ def inicio():
     }
 
 
-@app.post("/api/v1/viagens/normalizar")
-def normalizar_viagem(viagens: list[dict]):
-
-    viagens_normalizadas = []
-
-    for indice, viagem in enumerate(viagens):
-
-        integracao = identificar_integracao(viagem)
-        if integracao is None:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "indice": indice,
-                    "empresa_identificada": None,
-                    "campo": "formato",
-                    "mensagem": "O formato da viagem não foi reconhecido."
-                }
-            )
-        try:
-            integracao.validar(viagem)
-
-        except ViagemInvalidaError as erro:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "indice": indice,
-                    "empresa_identificada": integracao.nome_empresa,
-                    "campo": erro.campo,
-                    "mensagem": erro.mensagem
-                }
-            )
-        viagem_normalizada = integracao.normalizar(viagem)
-
-        viagens_normalizadas.append(
-            viagem_normalizada
-        )
-
-    return viagens_normalizadas
+@app.post("/api/v1/viagens/normalizar", response_model=RespostaNormalizacao)
+def normalizar_viagens(payloads: list[dict]):
+    return processar_viagens(payloads)

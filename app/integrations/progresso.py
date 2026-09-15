@@ -1,182 +1,114 @@
-from datetime import datetime
-from zoneinfo import ZoneInfo
-from app.exceptions import ViagemInvalidaError
+from app.integrations.base import IntegracaoCompanhia
+from app.integrations.registry import registrar_integracao
+from app.normalizacao import (
+    NomesDosCampos,
+    aplicar_regras_comuns,
+    exigir_campos,
+    interpretar_data_brasileira,
+    minutos_de_hh_mm,
+    normalizar_categoria,
+    para_inteiro,
+    para_iso8601,
+    preco_de_texto_brasileiro,
+)
+from app.schemas import montar_viagem_normalizada
 
-class ProgressoIntegration:
-    def reconhecer(self, viagem: dict):
-        return "codigoViagem" in viagem
 
-    def validar(self, viagem: dict):
+@registrar_integracao
+class IntegracaoProgresso(IntegracaoCompanhia):
+    """
+    Estratégia da Auto Viação Progresso.
 
-        campos_obrigatorios = [
-            "codigoViagem",
-            "cidadeOrigem",
-            "ufOrigem",
-            "cidadeDestino",
-            "ufDestino",
+    O payload é plano, com nomes em português e datas no formato brasileiro.
+    O campo codigoViagem é exclusivo desta companhia.
+    """
+
+    nome_empresa = "Auto Viação Progresso"
+
+    CAMPOS_OBRIGATORIOS = [
+        "codigoViagem",
+        "cidadeOrigem",
+        "ufOrigem",
+        "cidadeDestino",
+        "ufDestino",
+        "dataHoraSaida",
+        "dataHoraChegada",
+        "fusoHorario",
+        "tempoEstimado",
+        "valorPassagem",
+        "tipoServico",
+        "assentosDisponiveis",
+    ]
+
+    NOMES_DOS_CAMPOS = NomesDosCampos(
+        partida="dataHoraSaida",
+        chegada="dataHoraChegada",
+        duracao="tempoEstimado",
+        preco="valorPassagem",
+        assentos="assentosDisponiveis",
+        uf_origem="ufOrigem",
+        uf_destino="ufDestino",
+        categoria="tipoServico",
+    )
+
+    def reconhecer(self, payload: dict) -> bool:
+        return "codigoViagem" in payload
+
+    def _extrair(self, payload: dict) -> dict:
+        partida = interpretar_data_brasileira(
+            payload["dataHoraSaida"],
             "dataHoraSaida",
+            payload["fusoHorario"],
+        )
+        chegada = interpretar_data_brasileira(
+            payload["dataHoraChegada"],
             "dataHoraChegada",
-            "fusoHorario",
-            "tempoEstimado",
-            "valorPassagem",
-            "tipoServico",
-            "assentosDisponiveis"
-        ]
-
-        for campo in campos_obrigatorios:
-            if campo not in viagem:
-                raise ViagemInvalidaError(
-                    campo = campo,
-                    mensagem = f"O campo {campo} é obrigatório."
-                )
-
-        if len(viagem["ufOrigem"]) != 2:
-            raise ViagemInvalidaError(
-                campo = "ufOrigem",
-                mensagem = "O campo ufOrigem deve conter exatamente 2 caracteres."
-            )
-
-        if len(viagem["ufDestino"]) != 2:
-            raise ViagemInvalidaError(
-                campo = "ufDestino",
-                mensagem = "O campo ufDestino deve conter exatamente 2 caracteres."
-            )
-
-        try: 
-            horas, minutos = viagem["tempoEstimado"].split(":")
-            horas = int(horas)
-            minutos = int(minutos)
-
-            if horas < 0 or minutos < 0 or minutos >= 60:
-                raise ValueError
-
-            duracao = horas * 60 + minutos
-
-        except (ValueError, AttributeError):
-            raise ViagemInvalidaError(
-                campo = "tempoEstimado",
-                mensagem = "O campo tempoEstimado possui um formato inválido."
-            )
-
-        if duracao <= 0:
-            raise ViagemInvalidaError(
-                campo = "tempoEstimado",
-                mensagem = "O campo tempoEstimado deve representar uma duração positiva."
-            )
-
-        try:
-            valor = float(
-                str(viagem["valorPassagem"]).replace(",", ".")
-            )
-
-        except (ValueError):
-            raise ViagemInvalidaError(
-                campo = "valorPassagem",
-                mensagem = "O campo valorPassagem possui um formato inválido."
-            )    
-
-        if valor <= 0:
-            raise ViagemInvalidaError(
-                campo = "valorPassagem",
-                mensagem = "O campo valorPassagem deve representar um valor positivo."
-            )  
-
-        if int(viagem["assentosDisponiveis"]) < 0:
-            raise ViagemInvalidaError(
-                campo = "assentosDisponiveis",
-                mensagem = "O campo assentosDisponiveis não pode ser negativo."
-            )  
-
-        categoria = viagem["tipoServico"].lower()
-        
-        categorias_validas = ["convencional", "executivo", "leito", "semi-leito", "premium"]
-        
-        if categoria not in categorias_validas:
-            raise ViagemInvalidaError(
-                campo = "tipoServico",
-                mensagem = "O campo tipoServico deve ser um dos valores válidos."
-            )
-
-        try: 
-            partida = datetime.strptime(
-                viagem["dataHoraSaida"], "%d/%m/%Y %H:%M"
-            )   
-
-            chegada = datetime.strptime(
-                viagem["dataHoraChegada"], "%d/%m/%Y %H:%M"
-            )       
-
-        except ValueError:
-            raise ViagemInvalidaError(
-                campo = "dataHoraSaida/dataHoraChegada",
-                mensagem = "Os campos dataqHoraSaida e dataHoraChegada possuem um formato inválido."
-            )  
-
-        if chegada <= partida: 
-            raise ViagemInvalidaError(
-                campo = "dataHoraSaida/dataHoraChegada",
-                mensagem = "O campo dataHoraChegada deve ser posterior ao campo dataHoraSaida."
-            )  
-
-        duracao_real = int((chegada - partida).total_seconds() / 60)
-
-        if duracao != duracao_real:
-            raise ViagemInvalidaError(
-                campo = "tempoEstimado",
-                mensagem = "O tempo estimado não corresponde à diferença entre saída e chegada."
-            )
-
-    def normalizar(self, viagem: dict):
-        partida = datetime.strptime(
-            viagem["dataHoraSaida"], "%d/%m/%Y %H:%M"
+            payload["fusoHorario"],
         )
-
-        partida = partida.replace(
-            tzinfo = ZoneInfo(viagem["fusoHorario"])
-        )
-
-        chegada = datetime.strptime(
-            viagem["dataHoraChegada"], "%d/%m/%Y %H:%M"
-        )
-
-        chegada = chegada.replace(
-            tzinfo = ZoneInfo(viagem["fusoHorario"])
-        )
-
-        horas, minutos = viagem["tempoEstimado"].split(":")
-        duracao_minutos = int(horas) * 60 + int(minutos)
-
-        valor = float(
-            viagem["valorPassagem"].replace(",", ".")
-        )
-
-        categoria_bruta = viagem["classe"].lower()
-        categoria = CATEGORIAS.get(categoria_bruta, categoria_bruta)
 
         return {
-            "id_viagem": viagem["codigoViagem"],
-            "empresa": "Auto Viação Progresso",
-            "origem": {
-                "cidade": viagem["cidadeOrigem"],
-                "uf": viagem["ufOrigem"]
-            },
-
-            "destino": {
-                "cidade": viagem["cidadeDestino"],
-                "uf": viagem["ufDestino"]
-            },
-
-            "partida": partida.isoformat(),
-            "chegada": chegada.isoformat(),
-            "duracao_minutos": duracao_minutos,
-
-            "preco": {
-                "valor": valor,
-                "moeda": "BRL"
-            },
-
-            "categoria": categoria,
-
-            "assentos_disponiveis": int(viagem["assentosDisponiveis"])
-
+            "id_viagem": str(payload["codigoViagem"]),
+            "cidade_origem": str(payload["cidadeOrigem"]).strip(),
+            "uf_origem": str(payload["ufOrigem"]).strip().upper(),
+            "cidade_destino": str(payload["cidadeDestino"]).strip(),
+            "uf_destino": str(payload["ufDestino"]).strip().upper(),
+            "partida": partida,
+            "chegada": chegada,
+            "duracao_minutos": minutos_de_hh_mm(payload["tempoEstimado"], "tempoEstimado"),
+            "preco": preco_de_texto_brasileiro(payload["valorPassagem"], "valorPassagem"),
+            "moeda": "BRL",
+            "categoria": normalizar_categoria(payload["tipoServico"], "tipoServico"),
+            "assentos": para_inteiro(payload["assentosDisponiveis"], "assentosDisponiveis"),
         }
+
+    def validar(self, payload: dict) -> None:
+        exigir_campos(payload, self.CAMPOS_OBRIGATORIOS)
+        dados = self._extrair(payload)
+        aplicar_regras_comuns(
+            partida=dados["partida"],
+            chegada=dados["chegada"],
+            duracao_minutos=dados["duracao_minutos"],
+            preco=dados["preco"],
+            assentos=dados["assentos"],
+            uf_origem=dados["uf_origem"],
+            uf_destino=dados["uf_destino"],
+            campos=self.NOMES_DOS_CAMPOS,
+        )
+
+    def normalizar(self, payload: dict) -> dict:
+        dados = self._extrair(payload)
+        return montar_viagem_normalizada(
+            id_viagem=dados["id_viagem"],
+            empresa=self.nome_empresa,
+            cidade_origem=dados["cidade_origem"],
+            uf_origem=dados["uf_origem"],
+            cidade_destino=dados["cidade_destino"],
+            uf_destino=dados["uf_destino"],
+            partida=para_iso8601(dados["partida"]),
+            chegada=para_iso8601(dados["chegada"]),
+            duracao_minutos=dados["duracao_minutos"],
+            preco=dados["preco"],
+            moeda=dados["moeda"],
+            categoria=dados["categoria"],
+            assentos_disponiveis=dados["assentos"],
+        )

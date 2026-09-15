@@ -1,185 +1,106 @@
-class RotaIntegration:
-    def reconhecer(self, viagem: dict):
-        return "trip_id" in viagem
+from app.integrations.base import IntegracaoCompanhia
+from app.integrations.registry import registrar_integracao
+from app.normalizacao import (
+    NomesDosCampos,
+    aplicar_regras_comuns,
+    exigir_campos,
+    exigir_objeto,
+    interpretar_data_iso,
+    normalizar_categoria,
+    para_inteiro,
+    para_iso8601,
+    preco_de_centavos,
+)
+from app.schemas import montar_viagem_normalizada
 
 
-    def validar(self, viagem: dict):
+@registrar_integracao
+class IntegracaoRota(IntegracaoCompanhia):
+    """
+    Estratégia da Rota Transportes.
 
-        campos_obrigatorios = [
-            "trip_id",
-            "origem",
-            "destino",
-            "partida_em",
-            "chegada_em",
-            "duracao_minutos",
-            "tarifa_centavos",
-            "moeda",
-            "classe",
-            "vagas"
-        ]
+    O payload usa snake_case, objetos aninhados de origem/destino
+    e o preço em centavos. O campo trip_id é exclusivo desta companhia.
+    """
 
-        for campo in campos_obrigatorios:
-            if campo not in viagem:
-                raise ViagemInvalidaError(
-                    campo=campo,
-                    mensagem=f"O campo {campo} é obrigatório."
-                )
+    nome_empresa = "Rota Transportes"
 
-        if "municipio" not in viagem["origem"]:
-            raise ViagemInvalidaError(
-                campo="origem.municipio",
-                mensagem="O campo origem.municipio é obrigatório."
-            )
+    CAMPOS_OBRIGATORIOS = [
+        "trip_id",
+        "origem",
+        "destino",
+        "partida_em",
+        "chegada_em",
+        "duracao_minutos",
+        "tarifa_centavos",
+        "moeda",
+        "classe",
+        "vagas",
+    ]
 
-        if "estado" not in viagem["origem"]:
-            raise ViagemInvalidaError(
-                campo="origem.estado",
-                mensagem="O campo origem.estado é obrigatório."
-            )
+    NOMES_DOS_CAMPOS = NomesDosCampos(
+        partida="partida_em",
+        chegada="chegada_em",
+        duracao="duracao_minutos",
+        preco="tarifa_centavos",
+        assentos="vagas",
+        uf_origem="origem.estado",
+        uf_destino="destino.estado",
+        categoria="classe",
+    )
 
-        if "municipio" not in viagem["destino"]:
-            raise ViagemInvalidaError(
-                campo="destino.municipio",
-                mensagem="O campo destino.municipio é obrigatório."
-            )
+    def reconhecer(self, payload: dict) -> bool:
+        return "trip_id" in payload
 
-        if "estado" not in viagem["destino"]:
-            raise ViagemInvalidaError(
-                campo="destino.estado",
-                mensagem="O campo destino.estado é obrigatório."
-            )
+    def _extrair(self, payload: dict) -> dict:
+        origem = exigir_objeto(payload, "origem")
+        destino = exigir_objeto(payload, "destino")
+        exigir_campos(origem, ["municipio", "estado"], prefixo="origem")
+        exigir_campos(destino, ["municipio", "estado"], prefixo="destino")
 
-        if len(viagem["origem"]["estado"]) != 2:
-            raise ViagemInvalidaError(
-                campo="origem.estado",
-                mensagem="O campo origem.estado deve conter exatamente 2 caracteres."
-            )
+        return {
+            "id_viagem": str(payload["trip_id"]),
+            "cidade_origem": str(origem["municipio"]).strip(),
+            "uf_origem": str(origem["estado"]).strip().upper(),
+            "cidade_destino": str(destino["municipio"]).strip(),
+            "uf_destino": str(destino["estado"]).strip().upper(),
+            "partida": interpretar_data_iso(payload["partida_em"], "partida_em"),
+            "chegada": interpretar_data_iso(payload["chegada_em"], "chegada_em"),
+            "duracao_minutos": para_inteiro(payload["duracao_minutos"], "duracao_minutos"),
+            "preco": preco_de_centavos(payload["tarifa_centavos"], "tarifa_centavos"),
+            "moeda": str(payload["moeda"]).strip().upper(),
+            "categoria": normalizar_categoria(payload["classe"], "classe"),
+            "assentos": para_inteiro(payload["vagas"], "vagas"),
+        }
 
-        if len(viagem["destino"]["estado"]) != 2:
-            raise ViagemInvalidaError(
-                campo="destino.estado",
-                mensagem="O campo destino.estado deve conter exatamente 2 caracteres."
-            )
-
-        try:
-            duracao = int(viagem["duracao_minutos"])
-
-        except (ValueError, TypeError):
-            raise ViagemInvalidaError(
-                campo="duracao_minutos",
-                mensagem="O campo duracao_minutos deve ser um número inteiro."
-            )
-
-        try:
-            tarifa = int(viagem["tarifa_centavos"])
-
-        except (ValueError, TypeError):
-            raise ViagemInvalidaError(
-                campo="tarifa_centavos",
-                mensagem="O campo tarifa_centavos deve ser um número inteiro."
-            )
-
-        try:
-            vagas = int(viagem["vagas"])
-
-        except (ValueError, TypeError):
-            raise ViagemInvalidaError(
-                campo="vagas",
-                mensagem="O campo vagas deve ser um número inteiro."
-            )
-
-        if duracao <= 0:
-            raise ViagemInvalidaError(
-                campo="duracao_minutos",
-                mensagem="O campo duracao_minutos deve representar uma duração positiva."
-            )
-
-        if tarifa <= 0:
-            raise ViagemInvalidaError(
-                campo="tarifa_centavos",
-                mensagem="O campo tarifa_centavos deve representar um valor positivo."
-            )
-
-        if vagas < 0:
-            raise ViagemInvalidaError(
-                campo="vagas",
-                mensagem="O campo vagas não pode ser negativo."
-            )
-
-        try:
-            partida = datetime.fromisoformat(viagem["partida_em"])
-            chegada = datetime.fromisoformat(viagem["chegada_em"])
-
-        except (ValueError, TypeError):
-            raise ViagemInvalidaError(
-                campo="partida_em/chegada_em",
-                mensagem="Os campos partida_em e chegada_em possuem um formato inválido."
-            )
-
-        if chegada <= partida:
-            raise ViagemInvalidaError(
-                campo="chegada_em",
-                mensagem="O campo chegada_em deve ser posterior a partida_em."
-            )
-
-        duracao_real = int(
-            (chegada - partida).total_seconds() / 60
+    def validar(self, payload: dict) -> None:
+        exigir_campos(payload, self.CAMPOS_OBRIGATORIOS)
+        dados = self._extrair(payload)
+        aplicar_regras_comuns(
+            partida=dados["partida"],
+            chegada=dados["chegada"],
+            duracao_minutos=dados["duracao_minutos"],
+            preco=dados["preco"],
+            assentos=dados["assentos"],
+            uf_origem=dados["uf_origem"],
+            uf_destino=dados["uf_destino"],
+            campos=self.NOMES_DOS_CAMPOS,
         )
 
-        if duracao != duracao_real:
-            raise ViagemInvalidaError(
-                campo="duracao_minutos",
-                mensagem="A duração informada não corresponde à diferença entre partida e chegada."
-            )
-
-        categoria = viagem["classe"].lower()
-
-        categorias_validas = [
-            "convencional",
-            "executivo",
-            "semileito",
-            "leito"
-        ]
-
-        if categoria not in categorias_validas:
-            raise ViagemInvalidaError(
-                campo="classe",
-                mensagem="O campo classe deve ser um dos valores válidos."
-            )
-
-
-    def normalizar(self, viagem: dict):
-
-        valor = viagem["tarifa_centavos"] / 100
-        return {
-            "id_viagem": viagem["trip_id"],
-            "empresa": "Rota Transportes",
-
-            "origem": {
-                "cidade": viagem["origem"]["municipio"],
-                "uf": viagem["origem"]["estado"]
-            },
-
-            "destino": {
-                "cidade": viagem["destino"]["municipio"],
-                "uf": viagem["destino"]["estado"]
-            },
-
-            "partida": viagem["partida_em"],
-            "chegada": viagem["chegada_em"],
-
-            "duracao_minutos": int(
-                viagem["duracao_minutos"]
-            ),
-
-            "preco": {
-                "valor": valor,
-                "moeda": viagem["moeda"]
-            },
-
-            "categoria": categoria,
-
-            "assentos_disponiveis": int(
-                viagem["vagas"]
-            )
-        }
+    def normalizar(self, payload: dict) -> dict:
+        dados = self._extrair(payload)
+        return montar_viagem_normalizada(
+            id_viagem=dados["id_viagem"],
+            empresa=self.nome_empresa,
+            cidade_origem=dados["cidade_origem"],
+            uf_origem=dados["uf_origem"],
+            cidade_destino=dados["cidade_destino"],
+            uf_destino=dados["uf_destino"],
+            partida=para_iso8601(dados["partida"]),
+            chegada=para_iso8601(dados["chegada"]),
+            duracao_minutos=dados["duracao_minutos"],
+            preco=dados["preco"],
+            moeda=dados["moeda"],
+            categoria=dados["categoria"],
+            assentos_disponiveis=dados["assentos"],
+        )
