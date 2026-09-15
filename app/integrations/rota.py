@@ -1,4 +1,6 @@
 class RotaIntegration:
+    nome_empresa = "Rota Transportes"
+
     def reconhecer(self, viagem: dict):
         return "trip_id" in viagem
 
@@ -21,7 +23,7 @@ class RotaIntegration:
             "chegada": viagem["chegada_em"],
             "duracao_minutos": viagem["duracao_minutos"],
 
-            "preço": {
+            "preco": {
                 "valor": valor,
                 "moeda": viagem["moeda"]
             },

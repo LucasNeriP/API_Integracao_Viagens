@@ -2,6 +2,8 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 class ProgressoIntegration:
+    nome_empresa = "Auto Viação Progresso"
+
     def reconhecer(self, viagem: dict):
         return "codigoViagem" in viagem
     
@@ -46,7 +48,7 @@ class ProgressoIntegration:
             "chegada": chegada.isoformat(),
             "duracao_minutos": duracao_minutos,
 
-            "preço": {
+            "preco": {
                 "valor": valor,
                 "moeda": "BRL"
             },
