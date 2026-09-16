@@ -1,0 +1,66 @@
+ARQUIVO: app/main.py
+
+FUNÇÃO DO ARQUIVO
+Este é o arquivo principal e a "porta de entrada" da aplicação web. Ele cria a
+instância do servidor FastAPI, define as rotas que os clientes podem acessar pela
+internet e configura o tratamento especial de erros para quando algum dado inválido
+for enviado.
+
+COMO ELE FUNCIONA
+Ele utiliza o framework FastAPI para escutar requisições HTTP. Quando uma requisição
+chega em uma das rotas cadastradas, o FastAPI executa a função correspondente.
+Além disso, se durante o processamento ocorrer um erro do tipo `FalhaNaNormalizacao`,
+o manipulador de exceções configurado aqui entra em ação para responder com código
+HTTP 422 e uma mensagem amigável em JSON.
+
+FUNÇÕES
+
+* tratar_falha_na_normalizacao(request: Request, erro: FalhaNaNormalizacao) -> JSONResponse
+  É um manipulador de erro (exception handler). Se o processamento de uma viagem
+  falhar em qualquer ponto (por exemplo, data inválida, preço negativo ou empresa
+  não identificada), essa função captura o erro e devolve uma resposta HTTP 422
+  (Unprocessable Entity) com detalhes precisos: qual era a posição do item na lista
+  (índice), qual empresa foi identificada, qual campo estava errado e a mensagem
+  explicativa do problema.
+
+* inicio()
+  Função vinculada à rota básica `GET /`. Serve como um teste rápido de saúde da API
+  (healthcheck), retornando uma mensagem de boas-vindas: "Bem-vindo à API de
+  Integração de Viagens!".
+
+* normalizar_viagens(payloads: list[dict])
+  Função vinculada à rota principal `POST /api/v1/viagens/normalizar`. Ela recebe a
+  lista de viagens enviadas pelo cliente no corpo da requisição e repassa essa lista
+  para a função `processar_viagens()` do arquivo `app/servico.py`. O retorno é
+  automaticamente validado contra o modelo `RespostaNormalizacao`.
+
+VARIÁVEIS IMPORTANTES
+
+* app
+  A instância da aplicação FastAPI. Nela são configurados o título da API ("API de
+  Integração de Viagens"), a descrição e a versão ("1.0.0"). É essa variável que o
+  servidor Uvicorn executa no terminal com o comando `uvicorn app.main:app`.
+
+FLUXO DO CÓDIGO
+1. Na inicialização, a linha `import app.integrations` é executada, fazendo com que
+   todas as empresas (Progresso, Rota, Gontijo, Sertão Bus) sejam descobertas e
+   registradas automaticamente.
+2. A aplicação `app` é criada.
+3. O manipulador de erros `tratar_falha_na_normalizacao` é registrado.
+4. As rotas `/` e `/api/v1/viagens/normalizar` são registradas.
+5. Quando um usuário faz uma requisição POST com uma lista de dados para a rota de
+   normalização, a função `normalizar_viagens` é chamada.
+6. A função delega o trabalho pesado para `processar_viagens()` de `app/servico.py`.
+7. Se tudo der certo, os dados normalizados são devolvidos com status 200.
+8. Se ocorrer uma exceção de validação, `tratar_falha_na_normalizacao` captura o
+   erro e responde com status 422.
+
+ARQUIVOS RELACIONADOS
+- app/integrations: O import no topo força o registro automático de todas as viações.
+- app/exceptions.py: Fornece a classe de erro `FalhaNaNormalizacao`.
+- app/schemas.py: Fornece a classe `RespostaNormalizacao` para formatar a saída.
+- app/servico.py: Fornece a função `processar_viagens` que executa a regra de negócio.
+
+RESUMO
+O app/main.py é o ponto de contato entre a internet e a aplicação: recebe as
+chamadas HTTP, delega a normalização para o serviço e formata as respostas e erros.

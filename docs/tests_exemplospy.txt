@@ -1,0 +1,52 @@
+ARQUIVO: tests/exemplos.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo funciona como um banco de dados de exemplos e "gabaritos" para os
+testes. Ele armazena os modelos de dados brutos enviados pelas empresas e o
+resultado final exato que a API deve produzir para cada um deles.
+
+COMO ELE FUNCIONA
+Para evitar ter que digitar dicionários gigantescos dentro de cada teste, este
+arquivo reúne exemplos reais e completos de cada companhia. Os testes importam esses
+exemplos para disparar as requisições e conferem se a resposta bate exatamente com o
+gabarito esperado.
+
+VARIÁVEIS DE ENTRADA (PAYLOADS)
+
+* PAYLOAD_PROGRESSO
+  Exemplo de viagem da Auto Viação Progresso com datas brasileiras ("15/10/2026 06:30"),
+  fuso "America/Bahia", duração "06:20", valor "129,90", tipo "EXECUTIVO" e assentos "18".
+
+* PAYLOAD_ROTA
+  Exemplo de viagem da Rota Transportes com objetos aninhados para origem e destino,
+  datas ISO, duração em minutos (310), tarifa em centavos (8990) e classe "convencional".
+
+* PAYLOAD_GONTIJO
+  Exemplo de viagem da Gontijo em inglês (departure, arrival, fare, from, to), datas em
+  UTC (Z), duração em segundos (60000) e classe "SEMI_SLEEPER".
+
+* PAYLOAD_SERTAO_BUS
+  Exemplo da Sertão Bus com rotas no formato "Paulo Afonso/BA", duração em horas
+  decimais (5.5) e serviço "EXEC".
+
+VARIÁVEIS DE GABARITO (VIAGENS NORMALIZADAS)
+
+* VIAGEM_PROGRESSO, VIAGEM_ROTA, VIAGEM_GONTIJO, VIAGEM_SERTAO_BUS
+  Dicionários contendo o resultado perfeito esperado para cada uma das empresas:
+  todas com datas no padrão ISO 8601 no fuso America/Bahia, preços em decimais,
+  duração em minutos inteiros e categorias oficiais padronizadas.
+
+* URL
+  O caminho relativo do endpoint da API: `"/api/v1/viagens/normalizar"`.
+
+FLUXO DO CÓDIGO
+Este arquivo não executa nenhuma lógica. Ele apenas declara essas estruturas de
+dados para que outros arquivos de teste as importem.
+
+ARQUIVOS RELACIONADOS
+- tests/test_api.py, tests/test_gontijo.py, tests/test_progresso.py, tests/test_rota.py,
+  tests/test_sertao_bus.py, tests/test_validacoes.py: Todos consom esses exemplos.
+
+RESUMO
+O tests/exemplos.py é a fonte oficial de dados de teste do projeto, contendo
+exemplos reais de entrada e os gabaritos perfeitos de saída para todas as companhias.

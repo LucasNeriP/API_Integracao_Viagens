@@ -1,0 +1,65 @@
+ARQUIVO: app/servico.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo é o orquestrador (o "cérebro" de negócio) da aplicação. Ele contém a
+função principal que coordena o processamento da lista de viagens enviadas pelo
+usuário, sem precisar conhecer nenhuma empresa de ônibus diretamente.
+
+COMO ELE FUNCIONA
+O arquivo recebe uma lista de dados brutos (dicionários JSON). Para cada item da
+lista:
+1. Ele consulta o catálogo de integrações (`registro`) para descobrir qual empresa
+   reconhece a estrutura daquele objeto.
+2. Pede à estratégia daquela empresa para validar e normalizar a viagem.
+3. Se houver algum erro, captura o problema e lança uma `FalhaNaNormalizacao` com o
+   índice exato da linha/item que falhou.
+4. Se todos os itens forem válidos, monta o resultado final com a lista de viagens e
+   o total processado.
+
+Graças a esse design, o arquivo obedece com precisão ao Princípio Aberto/Fechado
+(OCP do SOLID): quando uma nova empresa é adicionada ao projeto, NENHUMA linha de
+`servico.py` precisa ser alterada.
+
+FUNÇÕES
+
+* processar_viagens(payloads: list) -> dict
+  Executa o ciclo completo de normalização para uma lista de viagens:
+  - Recebe: uma lista Python contendo os objetos enviados na requisição HTTP.
+  - Validações preliminares: checa se cada item é realmente um dicionário/objeto JSON.
+    Se alguém mandar um número ou texto solto na lista, acusa erro imediatamente.
+  - Identificação: pede a `registro.identificar(payload)` a estratégia correta. Se
+    nenhuma empresa reconhecer o formato, lança erro informando formato desconhecido.
+  - Execução: chama `estrategia.processar(payload)`.
+  - Tratamento de exceções: intercepta qualquer `ViagemInvalidaError` e converte em
+    uma `FalhaNaNormalizacao` rica em detalhes (incluindo o índice na lista e o nome
+    da empresa identificada).
+  - Retorno: devolve um dicionário com a chave `total` (quantidade de viagens) e
+    `viagens` (a lista de viagens 100% padronizadas).
+
+VARIÁVEIS E CONSTANTES IMPORTANTES
+
+* MENSAGEM_FORMATO_DESCONHECIDO
+  Texto padrão utilizado quando nenhum dos arquivos em `app/integrations/` reconhece a
+  estrutura de um item: "O formato do payload não corresponde a nenhuma companhia
+  suportada.".
+
+FLUXO DO CÓDIGO
+1. `app/main.py` chama `processar_viagens(payloads)`.
+2. Cria-se uma lista vazia `viagens_normalizadas`.
+3. Inicia-se um loop `for indice, payload in enumerate(payloads)`.
+4. Verifica se o payload é um dicionário (`isinstance(payload, dict)`).
+5. O `registro.identificar(payload)` percorre as companhias cadastradas.
+6. A estratégia encontrada executa `validar()` e depois `normalizar()`.
+7. O resultado de cada viagem entra na lista de saída.
+8. Ao final do loop, o resumo `{ "total": ..., "viagens": ... }` é retornado.
+
+ARQUIVOS RELACIONADOS
+- app/main.py: Invoca este serviço ao receber uma requisição HTTP.
+- app/integrations/registry.py: Fornece o objeto `registro` para identificar a
+  empresa.
+- app/exceptions.py: Fornece `FalhaNaNormalizacao` e `ViagemInvalidaError`.
+
+RESUMO
+O app/servico.py orquestra o fluxo de transformação de viagens de maneira neutra e
+independente, delegando o reconhecimento e o tratamento dos dados para as
+estratégias cadastradas no Registry.

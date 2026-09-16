@@ -1,0 +1,71 @@
+ARQUIVO: tests/test_validacoes.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo testa de forma exaustiva o sistema de segurança e consistência da API.
+Ele garante que nenhum dado incorreto, incompleto, fraudulento ou desconhecido passe
+pela normalização, e assegura que, se houver um único item inválido em um lote de
+viagens, toda a requisição seja rejeitada (política "tudo ou nada").
+
+COMO ELE FUNCIONA
+Ele envia listas de viagens com dados corrompidos ou desconhecidos para a rota
+`/api/v1/viagens/normalizar` e inspeciona se a resposta da API devolve o código de
+erro HTTP 422 e aponta exatamente qual o item (índice), qual o campo e o motivo da
+rejeição.
+
+TESTES IMPLEMENTADOS
+
+* test_rejeita_formato_nao_reconhecido(cliente)
+  Envia um objeto com campos inexistentes (`[{"campoInventado": True}]`).
+  Verifica se a API responde com status 422 e detalhe exato:
+  - indice: 0
+  - empresa_identificada: None / null
+  - campo: None / null
+  - mensagem: "O formato do payload não corresponde a nenhuma companhia suportada."
+
+* test_rejeita_formato_nao_reconhecido_no_meio_da_lista(cliente)
+  Envia uma lista de 3 itens onde o primeiro e o terceiro são válidos, mas o do meio
+  é lixo (`[PAYLOAD_PROGRESSO, {"foo": "bar"}, PAYLOAD_ROTA]`).
+  Verifica se a API detecta que a falha está no segundo item (`indice: 1`), não
+  devolve nenhuma viagem parcial e rejeita com 422.
+
+* test_rejeita_a_requisicao_inteira_quando_um_objeto_e_invalido(cliente)
+  Comprova a política atômica da API: envia uma viagem válida da Progresso e uma
+  viagem inválida da Rota.
+  Garante que a requisição inteira falha com 422, não salva dados parciais e indica o
+  índice 1 como o culpado.
+
+* test_rejeita_preco_menor_ou_igual_a_zero(cliente)
+  Envia uma passagem com valor zero (`valorPassagem: "0,00"`).
+  Verifica se a API rejeita com status 422 informando que o preço deve ser maior que
+  zero.
+
+* test_rejeita_duracao_menor_ou_igual_a_zero(cliente)
+  Envia uma duração zerada (`tempoEstimado: "00:00"`).
+  Verifica se a API rejeita com status 422 informando que a duração deve ser maior
+  que zero.
+
+* test_rejeita_uf_com_tamanho_diferente_de_dois(cliente)
+  Envia o nome completo do estado em vez da sigla (`ufOrigem: "BAHIA"`).
+  Verifica se a API rejeita com status 422 informando que a UF deve possuir
+  exatamente dois caracteres.
+
+* test_rejeita_categoria_desconhecida(cliente)
+  Envia uma categoria que não existe no contrato oficial (`tipoServico: "PREMIUM"`).
+  Verifica se a API rejeita com status 422 informando que a categoria não pôde ser
+  normalizada.
+
+FLUXO DO CÓDIGO
+O Pytest dispara cada cenário de teste negativo, garantindo que as regras de
+negócio compartilhadas de `app/normalizacao.py` e o manipulador de exceções de
+`app/main.py` estejam blindados.
+
+ARQUIVOS RELACIONADOS
+- app/normalizacao.py: Onde as regras testadas estão implementadas.
+- app/servico.py: Onde o controle de lotes e identificação é realizado.
+- app/main.py: Onde a resposta 422 é montada.
+
+RESUMO
+O tests/test_validacoes.py assegura que a API seja rígida com a qualidade dos dados,
+rejeitando requisições com empresas desconhecidas, preços zerados, durações nulas,
+siglas de estado inválidas e garantindo que requisições com qualquer defeito sejam
+bloqueadas por completo.

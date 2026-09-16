@@ -1,0 +1,80 @@
+ARQUIVO: app/schemas.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo define o "contrato de saída" da API, ou seja, o formato oficial,
+padronizado e garantido que todas as viagens terão quando forem devolvidas ao
+cliente. Ele utiliza a biblioteca Pydantic para definir esses modelos de dados.
+
+COMO ELE FUNCIONA
+No FastAPI, usamos classes do Pydantic (BaseModel) para estruturar a resposta.
+Cada modelo descreve exatamente quais campos devem existir e quais os tipos de cada
+campo (texto, número decimal, número inteiro, etc.). Se algum dado estiver fora do
+padrão, o Pydantic avisa imediatamente.
+
+CLASSES E ESTRUTURAS
+
+* Localidade(BaseModel)
+  Representa um ponto geográfico (cidade e estado).
+  Possui dois campos:
+  - cidade: nome do município em texto (ex: "Paulo Afonso").
+  - uf: sigla do estado em texto com 2 letras (ex: "BA").
+
+* Preco(BaseModel)
+  Representa o valor cobrado pela passagem.
+  Possui dois campos:
+  - valor: número decimal (ex: 129.90).
+  - moeda: sigla da moeda em texto (ex: "BRL").
+
+* ViagemNormalizada(BaseModel)
+  O coração do modelo de saída. Representa uma viagem de ônibus completamente limpa e
+  unificada.
+  Campos:
+  - id_viagem: código identificador da viagem em texto.
+  - empresa: nome oficial da empresa de ônibus (ex: "Auto Viação Progresso").
+  - origem: objeto Localidade com cidade e UF de embarque.
+  - destino: objeto Localidade com cidade e UF de desembarque.
+  - partida: data e hora de saída no padrão ISO 8601 (ex: "2026-10-15T06:30:00-03:00").
+  - chegada: data e hora de chegada no padrão ISO 8601.
+  - duracao_minutos: tempo total da viagem convertido para minutos inteiros.
+  - preco: objeto Preco com valor e moeda.
+  - categoria: uma das quatro categorias permitidas ("convencional", "executivo",
+    "semileito" ou "leito").
+  - assentos_disponiveis: quantidade de vagas livres em número inteiro.
+
+* RespostaNormalizacao(BaseModel)
+  O formato do JSON completo retornado pela rota de normalização:
+  - total: número total de viagens processadas na requisição.
+  - viagens: lista de objetos do tipo ViagemNormalizada.
+
+* DetalheDoErro(BaseModel)
+  Define o formato das mensagens de erro retornadas quando a validação falha:
+  - indice: posição da viagem na lista que causou o problema.
+  - empresa_identificada: nome da empresa (ou None/null se não for conhecida).
+  - campo: qual campo causou o erro (ou None/null).
+  - mensagem: explicação amigável do motivo do erro.
+
+FUNÇÕES
+
+* montar_viagem_normalizada(...) -> dict
+  Função utilitária facilitadora. Recebe todos os parâmetros individuais de uma
+  viagem (id, empresa, origem, destino, horários, preços, etc.), cria uma instância
+  de `ViagemNormalizada` para validação interna e devolve o resultado como um
+  dicionário pronto (`model_dump()`) para ser incluído na resposta final.
+
+FLUXO DO CÓDIGO
+1. Quando uma estratégia de integração (Progresso, Rota, Gontijo) conclui a leitura
+   e validação de um payload, ela chama a função `montar_viagem_normalizada`.
+2. A função cria o objeto `ViagemNormalizada`, validando os tipos de cada campo.
+3. O dicionário resultante é coletado pelo serviço e enviado como resposta da API.
+4. O FastAPI utiliza `RespostaNormalizacao` para documentar a rota no Swagger/OpenAPI
+   e validar a estrutura final entregue ao cliente.
+
+ARQUIVOS RELACIONADOS
+- app/main.py: Usa `RespostaNormalizacao` como `response_model` do endpoint.
+- app/integrations/*.py: Todas as estratégias importam `montar_viagem_normalizada`
+  para montar o dicionário padronizado no método `normalizar()`.
+
+RESUMO
+O app/schemas.py funciona como o "molde oficial" dos dados de saída, garantindo que
+todas as viagens, venham de onde vierem, terminem no mesmo formato idêntico e
+previsível.

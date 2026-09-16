@@ -1,0 +1,127 @@
+ARQUIVO: app/normalizacao.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo é a "caixa de ferramentas" e o guardião das regras de negócio comuns do
+projeto. Ele reúne funções utilitárias que realizam conversões de dados (datas,
+preços, fusos horários, durações e categorias) e verificam se as regras gerais de
+transporte rodoviário estão sendo respeitadas.
+
+COMO ELE FUNCIONA
+Cada empresa envia dados em um estilo (segundos, horas, centavos, strings com vírgula,
+fusos UTC ou texto brasileiro). As estratégias de cada empresa chamam as funções
+deste arquivo para transformar esses dados em valores padronizados do Python
+(datetime, int, float) e, em seguida, invocam `aplicar_regras_comuns()` para checar
+se os dados fazem sentido lógico.
+
+CLASSES E ESTRUTURAS
+
+* NomesDosCampos(dataclass)
+  Uma estrutura simples que guarda os nomes que cada empresa dá aos seus campos.
+  Como a Progresso chama a saída de "dataHoraSaida" e a Rota chama de "partida_em",
+  essa classe permite que a função de validação comum saiba qual nome de campo citar
+  caso encontre um erro, mantendo as mensagens de erro 100% fiéis ao payload original.
+
+CONSTANTES IMPORTANTES
+
+* FUSO_PADRAO
+  Define o fuso horário padrão adotado pela API: `America/Bahia` (UTC-3 sem horário de
+  verão). Todas as viagens, mesmo que venham em UTC ou em outro fuso, são convertidas
+  para este fuso de referência.
+
+* CATEGORIAS_OFICIAIS
+  Dicionário que mapeia variações de nomes de assentos para as 4 categorias oficiais:
+  - "convencional" -> "convencional"
+  - "executivo" / "exec" -> "executivo"
+  - "semileito" / "semisleeper" -> "semileito"
+  - "leito" / "sleeper" -> "leito"
+
+FUNÇÕES DE VALIDAÇÃO E ESTRUTURA
+
+* exigir_campos(payload, campos, prefixo="")
+  Verifica se todos os campos de uma lista existem no dicionário e não são nulos. Se
+  algum faltar, levanta `ViagemInvalidaError`.
+
+* exigir_objeto(payload, campo)
+  Garante que um determinado campo exista e seja um objeto/dicionário aninhado
+  (como o campo "from" na Gontijo ou "origem" na Rota).
+
+* para_inteiro(valor, campo)
+  Converte com segurança um valor para número inteiro. Se não conseguir, lança erro.
+
+* para_decimal(valor, campo)
+  Converte com segurança um valor (mesmo com vírgula) para número decimal (float).
+
+FUNÇÕES DE DATAS E FUSOS
+
+* interpretar_data_brasileira(valor, campo, nome_do_fuso)
+  Lê datas no formato tradicional brasileiro "dd/mm/aaaa HH:MM" e aplica o fuso
+  horário correspondente informado no payload.
+
+* interpretar_data_iso(valor, campo)
+  Lê datas no padrão ISO 8601 (como "2026-10-15T19:30:00Z" ou com offset "-03:00").
+  Se a data não tiver fuso explícito, assume America/Bahia. Converte sufixos "Z" (UTC).
+
+* para_iso8601(data)
+  Transforma qualquer objeto de data do Python em um texto no formato ISO 8601
+  ajustado para o fuso padrão America/Bahia (sem microssegundos).
+
+FUNÇÕES DE DURAÇÃO E PREÇO
+
+* minutos_de_hh_mm(valor, campo)
+  Converte durações em formato textual de horas e minutos (ex: "06:20") para o total
+  em minutos inteiros (380 minutos).
+
+* minutos_de_segundos(valor, campo)
+  Converte duração recebida em segundos (ex: 60000) para minutos (1000 minutos).
+
+* minutos_de_horas(valor, campo)
+  Converte duração em horas decimais (ex: 5.5 horas) para minutos (330 minutos).
+
+* preco_de_texto_brasileiro(valor, campo)
+  Converte texto de preço com vírgula (ex: "129,90") para número float com 2 casas
+  decimais (129.90).
+
+* preco_de_centavos(valor, campo)
+  Converte valor em centavos inteiros (ex: 8990) dividindo por 100 (89.90).
+
+* preco_de_decimal(valor, campo)
+  Arredonda valores decimais para 2 casas.
+
+FUNÇÕES DE CATEGORIA E ROTA
+
+* simplificar_categoria(valor)
+  Remove espaços, hifens, traços e põe o texto em minúsculas para facilitar a busca.
+
+* normalizar_categoria(valor, campo)
+  Usa `simplificar_categoria` e consulta `CATEGORIAS_OFICIAIS`. Se o tipo de assento
+  não existir entre os oficiais, acusa erro.
+
+* separar_cidade_e_uf(valor, campo)
+  Separa textos como "Paulo Afonso/BA" na cidade ("Paulo Afonso") e na UF ("BA").
+
+REGRA DE NEGÓCIO CENTRAL
+
+* aplicar_regras_comuns(partida, chegada, duracao_minutos, preco, assentos, uf_origem, uf_destino, campos)
+  Aplica todas as regras gerais obrigatórias:
+  1. As siglas de estado (UF) de origem e destino devem ter exatamente 2 letras.
+  2. A data/hora de chegada deve ser estritamente posterior à data/hora de partida.
+  3. A duração em minutos deve ser maior que zero.
+  4. A duração informada deve bater exatamente com a diferença calculada entre os
+     horários de chegada e partida.
+  5. O preço da passagem deve ser maior que zero.
+  6. A quantidade de assentos livres não pode ser negativa (pode ser zero ou mais).
+
+FLUXO DO CÓDIGO
+Este arquivo funciona como uma biblioteca interna compartilhada: suas funções são
+chamadas pelas estratégias em `app/integrations/` durante as etapas de validação e
+normalização de cada viagem recebida.
+
+ARQUIVOS RELACIONADOS
+- app/exceptions.py: Fornece `ViagemInvalidaError`, lançada pelas validações.
+- app/integrations/*.py: Todas as integrações de companhias consom as funções deste
+  arquivo.
+
+RESUMO
+O app/normalizacao.py centraliza os cálculos, conversões de formato e todas as regras
+de negócio indispensáveis para garantir que os dados das viagens sejam válidos e
+consistentes.

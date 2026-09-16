@@ -1,0 +1,22 @@
+ARQUIVO: tests/__init__.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo vazio indica ao Python que a pasta `tests` deve ser tratada como um
+pacote Python.
+
+COMO ELE FUNCIONA
+Mesmo estando completamente vazio (0 bytes), a sua presença é importante para que
+os arquivos de teste consigam fazer importações relativas ou importar módulos
+irmãos (como `from tests.exemplos import ...`) sem nenhum erro de localização de
+módulos.
+
+FLUXO DO CÓDIGO
+É lido silenciosamente pelo interpretador Python quando o Pytest inicia a execução
+dos testes contidos na pasta `tests/`.
+
+ARQUIVOS RELACIONADOS
+- tests/conftest.py, tests/exemplos.py e todos os arquivos de teste `tests/test_*.py`.
+
+RESUMO
+O tests/__init__.py é um marcador de pacote do Python que permite que os arquivos
+de teste importem dados e utilitários uns dos outros com facilidade.

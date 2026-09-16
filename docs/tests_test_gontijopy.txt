@@ -1,0 +1,53 @@
+ARQUIVO: tests/test_gontijo.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo reúne os testes automatizados específicos para a integração da Gontijo.
+Ele garante que todos os casos particulares da Gontijo (conversão de UTC para o fuso
+da Bahia, conversão de segundos em minutos, normalização de categorias em inglês e
+rejeição de assentos negativos) estejam funcionando perfeitamente.
+
+COMO ELE FUNCIONA
+Ele envia requisições POST para a rota de normalização com o payload da Gontijo
+(ou cópias modificadas dele usando `deepcopy`) e verifica tanto os sucessos quanto as
+rejeições esperadas.
+
+TESTES IMPLEMENTADOS
+
+* test_normaliza_payload_da_gontijo(cliente)
+  Envia o payload padrão da Gontijo e confere se a resposta tem status 200 e se o
+  resultado final é exatamente igual a `VIAGEM_GONTIJO`.
+
+* test_converte_utc_para_america_bahia(cliente)
+  Testa a conversão de fuso horário. A Gontijo envia saída às 19:30 UTC e chegada
+  às 12:10 UTC (com o marcador Z). O teste verifica se a API converteu os horários
+  corretamente para o fuso de Salvador/Bahia (-03:00):
+  - Partida: "2026-10-15T16:30:00-03:00"
+  - Chegada: "2026-10-16T09:10:00-03:00"
+
+* test_converte_duracao_de_segundos_para_minutos(cliente)
+  A Gontijo envia a duração em segundos (`estimatedDurationSeconds`: 60000). O teste
+  verifica se o resultado é convertido corretamente para 1000 minutos inteiros.
+
+* test_normaliza_semi_sleeper_para_semileito(cliente)
+  A Gontijo envia a categoria em inglês com sublinhado (`SEMI_SLEEPER`). O teste
+  garante que o sistema a converta para a categoria oficial "semileito".
+
+* test_rejeita_assentos_negativos_na_gontijo(cliente)
+  Modifica o payload para enviar assentos negativos (`availableSeats`: -1).
+  Verifica se a API rejeita com status 422 e devolve os detalhes corretos:
+  - empresa_identificada: "Gontijo"
+  - campo: "availableSeats"
+  - mensagem: contém o aviso "não pode ser negativa"
+
+FLUXO DO CÓDIGO
+O Pytest dispara cada teste individualmente, validando as respostas retornadas
+pela aplicação para cenários válidos e inválidos da Gontijo.
+
+ARQUIVOS RELACIONADOS
+- app/integrations/gontijo.py: Arquivo de código que está sendo testado.
+- tests/exemplos.py: Fornece `PAYLOAD_GONTIJO` e `VIAGEM_GONTIJO`.
+
+RESUMO
+O tests/test_gontijo.py garante o funcionamento impecável da integração com a
+Gontijo, assegurando conversões precisas de fuso UTC, segundos e categorias em
+inglês, além de validar assentos negativos.

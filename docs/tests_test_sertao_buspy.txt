@@ -1,0 +1,50 @@
+ARQUIVO: tests/test_sertao_bus.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo testa a integração da companhia Sertão Bus. Ele garante que as
+particularidades únicas dessa empresa (como cidades no formato "Cidade/UF", duração
+em horas decimais e siglas de serviço abreviadas) sejam tratadas corretamente e que
+rotas sem UF sejam devidamente rejeitadas.
+
+COMO ELE FUNCIONA
+Ele utiliza a fixture `cliente` para enviar o `PAYLOAD_SERTAO_BUS` para o endpoint
+de normalização e inspeciona se os campos calculados saíram exatamente no padrão
+esperado.
+
+TESTES IMPLEMENTADOS
+
+* test_normaliza_payload_da_sertao_bus(cliente)
+  Envia o payload completo da Sertão Bus e confere se a resposta devolve status 200
+  e bate integralmente com o gabarito `VIAGEM_SERTAO_BUS`.
+
+* test_separa_cidade_e_uf_do_campo_rota(cliente)
+  A Sertão Bus envia a rota em strings compostas: "Paulo Afonso/BA" e "Maceió/AL".
+  O teste confere se a API separou a barra corretamente, gerando objetos estruturados:
+  - origem: {"cidade": "Paulo Afonso", "uf": "BA"}
+  - destino: {"cidade": "Maceió", "uf": "AL"}
+
+* test_converte_duracao_em_horas_para_minutos(cliente)
+  A Sertão Bus informa a duração em horas fracionadas (`duracao_horas`: 5.5). O teste
+  verifica se o valor foi convertido para minutos inteiros: 330 minutos (5.5 * 60).
+
+* test_normaliza_exec_para_executivo(cliente)
+  A empresa envia a categoria abreviada como "EXEC". O teste valida se a API a
+  converte para a categoria oficial padronizada: "executivo".
+
+* test_rejeita_rota_sem_uf_na_sertao_bus(cliente)
+  Modifica a rota de partida retirando a barra e o estado ("Paulo Afonso" em vez de
+  "Paulo Afonso/BA").
+  Verifica se a API recusa com status 422 e aponta o erro no campo "rota.partida".
+
+FLUXO DO CÓDIGO
+O Pytest dispara as funções de teste, garantindo a robustez do processador da Sertão
+Bus tanto na extração de dados quanto no tratamento de rotas incompletas.
+
+ARQUIVOS RELACIONADOS
+- app/integrations/sertao_bus.py: Código da integração sendo testada.
+- tests/exemplos.py: Fornece `PAYLOAD_SERTAO_BUS` e `VIAGEM_SERTAO_BUS`.
+
+RESUMO
+O tests/test_sertao_bus.py valida a integração da Sertão Bus, certificando a divisão
+correta de strings "Cidade/UF", a conversão de horas decimais para minutos e o
+reconhecimento de categorias abreviadas.

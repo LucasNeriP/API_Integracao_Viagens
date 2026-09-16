@@ -1,0 +1,55 @@
+ARQUIVO: tests/test_extensibilidade.py
+
+FUNÇÃO DO ARQUIVO
+Este teste é a "prova de fogo" da arquitetura do projeto. Ele demonstra que o
+sistema é 100% extensível (respeita o princípio Aberto/Fechado - OCP): uma nova
+empresa de ônibus pode ser criada dinamicamente e passar a funcionar na API sem
+precisar alterar uma única linha de código existente no sistema.
+
+COMO ELE FUNCIONA
+Dentro do próprio arquivo de teste, cria-se uma nova classe de empresa chamada
+`IntegracaoLaboratorio` que herda de `IntegracaoCompanhia`.
+O teste registra essa empresa no catálogo global (`registro.registrar(...)`), envia
+uma requisição contendo uma viagem da Progresso e uma viagem desse "Laboratório", e
+confere se a API processa as duas viagens com perfeição. No final, remove a empresa
+de teste para manter o catálogo limpo.
+
+CLASSES E TESTES
+
+* IntegracaoLaboratorio(IntegracaoCompanhia)
+  Classe de demonstração criada apenas para o teste.
+  Implementa:
+  - reconhecer: checa se existe a chave `id_laboratorio`.
+  - validar: confere os campos, datas ISO, durações e regras comuns.
+  - normalizar: monta a viagem no formato homogêneo.
+
+* test_nova_companhia_entra_so_com_registro_da_estrategia(cliente)
+  Função de teste que executa o experimento:
+  1. Cria uma instância de `IntegracaoLaboratorio`.
+  2. Adiciona-a ao `registro` usando `registro.registrar(laboratorio)`.
+  3. Dispara um POST com um lote contendo `[PAYLOAD_PROGRESSO, payload_laboratorio]`.
+  4. Usa um bloco `try ... finally` para garantir que `registro.remover(laboratorio)`
+     seja executado ao término do teste, mesmo se algo falhar.
+  5. Verifica se:
+     - O status retornado foi 200.
+     - O total de viagens é 2.
+     - A primeira viagem é da "Auto Viação Progresso".
+     - A segunda viagem é do "Laboratório Bus" com todos os campos normalizados.
+
+FLUXO DO CÓDIGO
+1. Define a nova estratégia em tempo de execução.
+2. Adiciona a estratégia ao `registro`.
+3. Executa a requisição HTTP.
+4. O `servico.py` reconhece a nova empresa pelo catálogo sem saber que ela acabou
+   de ser criada.
+5. Limpa o registro no `finally`.
+
+ARQUIVOS RELACIONADOS
+- app/integrations/base.py: Herda a classe base `IntegracaoCompanhia`.
+- app/integrations/registry.py: Testa os métodos `registrar()` e `remover()`.
+- app/servico.py: Comprova que o serviço funciona sem modificações.
+
+RESUMO
+O tests/test_extensibilidade.py prova na prática a qualidade da arquitetura,
+mostrando que novas empresas de ônibus podem ser adicionadas e aceitas pela API
+apenas registrando sua estratégia, sem modificar o código do backend.

@@ -1,0 +1,54 @@
+ARQUIVO: app/integrations/base.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo define o "molde" ou "contrato abstrato" que toda e qualquer integração
+de companhia de ônibus é obrigada a seguir. Ele implementa o padrão de projeto
+Strategy e o princípio de Segregação de Interface do SOLID.
+
+COMO ELE FUNCIONA
+Ele usa a classe `ABC` (Abstract Base Class) do Python. Uma classe abstrata funciona
+como um contrato: ela lista quais métodos uma classe filha DEVE obrigatoriamente ter,
+mas deixa a implementação desses métodos para cada classe filha.
+Se alguém tentar criar uma integração e esquecer de programar o método `reconhecer`,
+`validar` ou `normalizar`, o Python não permitirá que o código rode.
+
+CLASSES E MÉTODOS
+
+* IntegracaoCompanhia(ABC)
+  Classe base para todas as viações do sistema.
+
+  Atributos obrigatórios:
+  - nome_empresa (str): o nome oficial legível da viação (ex: "Gontijo").
+
+  Métodos abstratos (obrigatórios em toda filha):
+  - reconhecer(payload: dict) -> bool
+    Recebe um dicionário e responde com Verdadeiro (True) ou Falso (False). Cada
+    empresa sabe olhar para os campos e dizer: "Sim, esse formato é meu!".
+  - validar(payload: dict) -> None
+    Conferência detalhada dos dados. Deve levantar `ViagemInvalidaError` se faltar
+    algum campo obrigatório ou se alguma regra for quebrada.
+  - normalizar(payload: dict) -> dict
+    Traduz os campos próprios da empresa para o dicionário final padronizado.
+
+  Métodos concretos (já implementados para todas):
+  - processar(payload: dict) -> dict
+    Define o fluxo comum de execução para qualquer empresa (padrão Template Method):
+    primeiro executa `self.validar(payload)` e logo em seguida retorna
+    `self.normalizar(payload)`.
+
+FLUXO DO CÓDIGO
+1. As classes de cada viação (`IntegracaoProgresso`, `IntegracaoRota`, etc.) herdam
+   desta classe `IntegracaoCompanhia`.
+2. Quando o serviço precisa processar uma viagem, ele chama `estrategia.processar(payload)`.
+3. O método `processar` garante que a validação sempre ocorra antes da normalização.
+
+ARQUIVOS RELACIONADOS
+- app/integrations/registry.py: Gerencia instâncias filhas de `IntegracaoCompanhia`.
+- app/integrations/*.py: Todas as empresas concretas (gontijo, progresso, rota,
+  sertao_bus) implementam esta classe.
+- app/servico.py: Depende apenas desta abstração genérica para processar as viagens.
+
+RESUMO
+O app/integrations/base.py estabelece a regra de ouro para qualquer empresa de
+ônibus: toda empresa precisa saber se reconhecer, se validar e se traduzir para o
+formato comum.

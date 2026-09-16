@@ -1,0 +1,40 @@
+ARQUIVO: tests/conftest.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo é o centro de configuração e compartilhamento de recursos (fixtures) do
+Pytest. Ele prepara um cliente de testes da API que pode ser reutilizado em todos os
+arquivos de teste sem precisar repetir código.
+
+COMO ELE FUNCIONA
+O Pytest reconhece arquivos chamados `conftest.py` de forma especial. Qualquer função
+marcada com `@pytest.fixture` dentro dele fica disponível automaticamente para
+qualquer teste do projeto, bastando colocar o nome da fixture como parâmetro da
+função de teste.
+
+VARIÁVEIS IMPORTANTES
+
+* URL
+  Guarda a rota da API que recebe as viagens: `"/api/v1/viagens/normalizar"`.
+
+FIXTURES E FUNÇÕES
+
+* cliente() -> TestClient
+  Cria uma instância do `TestClient` da FastAPI (alimentado pela biblioteca `httpx`)
+  conectada diretamente à aplicação `app` de `app/main.py`.
+  Isso permite que os testes simulem chamadas HTTP reais (como `cliente.post(...)`)
+  em memória, de forma ultrarrápida, sem precisar abrir portas de rede ou subir um
+  servidor web de verdade.
+
+FLUXO DO CÓDIGO
+1. Quando um teste pede o parâmetro `cliente` (ex: `def test_algo(cliente):`), o
+   Pytest executa a função `cliente()` deste arquivo.
+2. A fixture instancia o `TestClient` associado ao `app`.
+3. O teste recebe o cliente pronto para disparar requisições POST e GET.
+
+ARQUIVOS RELACIONADOS
+- app/main.py: Fornece a instância do servidor FastAPI (`app`).
+- tests/test_*.py: Todos os arquivos de teste utilizam a fixture `cliente`.
+
+RESUMO
+O tests/conftest.py fornece o `cliente` de teste simulado, permitindo disparar
+requisições HTTP para a API de forma rápida, simples e automática em todos os testes.

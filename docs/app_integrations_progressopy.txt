@@ -1,0 +1,68 @@
+ARQUIVO: app/integrations/progresso.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo é o tradutor dedicado à Auto Viação Progresso. Ele é especialista em
+entender a estrutura enviada por essa companhia: um formato plano (sem objetos
+aninhados), com nomes em português e formato de data/hora tradicional brasileiro
+(dd/mm/aaaa HH:MM) acompanhado de fuso horário.
+
+COMO ELE FUNCIONA
+Ele implementa a classe `IntegracaoProgresso`, decorada com `@registrar_integracao`.
+1. Para reconhecer: procura pela presença da chave `codigoViagem`, que é a marca
+   registrada dos dados da Progresso.
+2. Para validar: assegura que todos os 12 campos obrigatórios estão preenchidos,
+   converte o formato brasileiro de data, duração e preço, e aplica as regras comuns.
+3. Para normalizar: devolve os dados convertidos de acordo com o contrato unificado.
+
+CLASSES E MÉTODOS
+
+* IntegracaoProgresso(IntegracaoCompanhia)
+  Classe de estratégia da Auto Viação Progresso.
+
+  Atributos e Constantes:
+  - nome_empresa = "Auto Viação Progresso": nome oficial exibido no JSON final.
+  - CAMPOS_OBRIGATORIOS: lista dos 12 campos exigidos pela Progresso ("codigoViagem",
+    "cidadeOrigem", "ufOrigem", "cidadeDestino", "ufDestino", "dataHoraSaida",
+    "dataHoraChegada", "fusoHorario", "tempoEstimado", "valorPassagem",
+    "tipoServico", "assentosDisponiveis").
+  - NOMES_DOS_CAMPOS: mapeamento dos nomes de campos para geração de mensagens de erro.
+
+  Métodos:
+  - reconhecer(payload: dict) -> bool
+    Retorna True se `codigoViagem` estiver presente no payload.
+  - _extrair(payload: dict) -> dict
+    Método interno responsável pela leitura e conversão inicial dos dados:
+    * Datas de saída e chegada: interpretadas do formato "dd/mm/aaaa HH:MM" com o
+      fuso informado em "fusoHorario" (ex: "America/Bahia").
+    * Duração de "tempoEstimado": convertida do formato textual "HH:MM" (ex: "06:20")
+      para minutos (380).
+    * Preço de "valorPassagem": convertido de texto com vírgula (ex: "129,90") para
+      número float (129.90).
+    * Moeda: fixada como "BRL".
+    * Categoria de "tipoServico" (ex: "EXECUTIVO"): convertida para "executivo".
+    * Assentos de "assentosDisponiveis": convertidos de texto ("18") para número
+      inteiro (18).
+  - validar(payload: dict) -> None
+    Exige todos os campos obrigatórios e submete os valores calculados à função
+    `aplicar_regras_comuns()`.
+  - normalizar(payload: dict) -> dict
+    Chama `montar_viagem_normalizada()` gerando a resposta no padrão ISO 8601.
+
+FLUXO DO CÓDIGO
+1. O arquivo é registrado na inicialização do sistema.
+2. Quando uma viagem contendo `codigoViagem` chega à API, esta classe é escolhida.
+3. `validar()` confere se datas, durações e preços são coerentes.
+4. `normalizar()` produz a viagem limpa e homogênea.
+
+ARQUIVOS RELACIONADOS
+- app/integrations/base.py: Define a interface `IntegracaoCompanhia`.
+- app/integrations/registry.py: Registra esta estratégia no catálogo.
+- app/normalizacao.py: Fornece utilitários como `interpretar_data_brasileira`,
+  `minutos_de_hh_mm` e `preco_de_texto_brasileiro`.
+- app/schemas.py: Fornece o construtor `montar_viagem_normalizada`.
+- tests/test_progresso.py: Conjunto de testes automatizados dedicados à Progresso.
+
+RESUMO
+O app/integrations/progresso.py trata com perfeição os dados da Auto Viação
+Progresso, interpretando datas no padrão brasileiro, textos com vírgula e durações
+no formato hora:minuto.

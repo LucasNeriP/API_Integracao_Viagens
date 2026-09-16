@@ -1,0 +1,50 @@
+ARQUIVO: app/integrations/__init__.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo transforma a pasta `app/integrations` em um pacote Python e realiza
+uma função fundamental de automação: o "auto-discovery" (descoberta automática) de
+todas as companhias de ônibus presentes na pasta.
+
+COMO ELE FUNCIONA
+Em vez de um desenvolvedor ter que abrir este arquivo e adicionar manualmente
+`import app.integrations.gontijo`, `import app.integrations.progresso`, etc. toda vez
+que criar uma empresa nova, este arquivo faz isso sozinho.
+Ao ser carregado pelo Python, ele varre todos os arquivos `.py` existentes dentro da
+pasta `app/integrations/` e importa cada um deles dinamicamente usando a biblioteca
+`importlib`. Como cada arquivo de empresa possui o decorador `@registrar_integracao`,
+o simples ato de importar o arquivo já cadastra a empresa no catálogo (`registry`).
+
+VARIÁVEIS IMPORTANTES
+
+* _MODULOS_DE_INFRAESTRUTURA
+  Um conjunto (set) contendo os nomes dos arquivos que não são empresas de ônibus:
+  `{"base", "registry"}`. O carregador automático pula esses dois arquivos para não
+  tentar registrá-los como se fossem viagens.
+
+FUNÇÕES
+
+* _carregar_estrategias() -> None
+  Varre a pasta atual (`app/integrations/`):
+  1. Lista todos os arquivos terminados em `.py`.
+  2. Ignora arquivos especiais que começam com `_` (como `__init__.py`).
+  3. Ignora os arquivos de infraestrutura ("base" e "registry").
+  4. Para cada arquivo restante (ex: "gontijo.py", "progresso.py", "rota.py",
+     "sertao_bus.py"), executa `importlib.import_module()`.
+
+FLUXO DO CÓDIGO
+1. Quando `app/main.py` ou `app/servico.py` executa `import app.integrations`, este
+   arquivo é acionado.
+2. A função `_carregar_estrategias()` é chamada automaticamente na última linha.
+3. Cada estratégia é importada em ordem alfabética.
+4. O decorador de cada estratégia a adiciona ao `registry`.
+5. O sistema está pronto para reconhecer todas as companhias sem nenhuma
+   configuração manual.
+
+ARQUIVOS RELACIONADOS
+- app/main.py e app/servico.py: Importam este pacote no início de suas execuções.
+- app/integrations/*.py: Todos os arquivos de viações são carregados por este
+  mecanismo automático.
+
+RESUMO
+O app/integrations/__init__.py automatiza a inclusão de novas companhias no sistema:
+basta colocar o novo arquivo na pasta que ele é importado e ativado automaticamente.

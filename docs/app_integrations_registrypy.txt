@@ -1,0 +1,63 @@
+ARQUIVO: app/integrations/registry.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo implementa o padrão de projeto Registry (um catálogo ou livro de
+registros). Sua missão é guardar todas as estratégias de companhias disponíveis e
+fornecer uma maneira elegante de descobrir qual companhia é dona de um determinado
+payload, sem recorrer a sequências de `if / elif / else`.
+
+COMO ELE FUNCIONA
+Ele cria uma classe de registro que mantém uma lista de estratégias ativas. Quando o
+sistema recebe uma viagem, o registro faz uma pergunta rápida para cada estratégia
+da lista: "Você reconhece este formato?". A primeira empresa que disser "Sim" é
+devolvida para assumir o trabalho.
+Além disso, fornece um decorador (`@registrar_integracao`) que permite que qualquer
+nova classe de companhia seja registrada no catálogo de forma automática no momento
+em que o arquivo é lido pelo Python.
+
+CLASSES E MÉTODOS
+
+* RegistroDeIntegracoes
+  Classe responsável por gerenciar a lista de companhias cadastradas.
+  Métodos:
+  - __init__(): inicializa a lista interna vazia de estratégias.
+  - registrar(estrategia): adiciona uma nova estratégia à lista.
+  - remover(estrategia): remove uma estratégia da lista (muito útil em testes).
+  - listar(): devolve uma cópia da lista com todas as estratégias cadastradas.
+  - identificar(payload: dict) -> IntegracaoCompanhia | None:
+    Percorre a lista de estratégias chamando `estrategia.reconhecer(payload)`.
+    Se encontrar uma que retorne True, devolve essa estratégia imediatamente.
+    Se nenhuma reconhecer, devolve None.
+
+VARIÁVEIS IMPORTANTES
+
+* registro
+  Uma instância única e global da classe `RegistroDeIntegracoes` (padrão Singleton
+  prático). É nela que todas as empresas do sistema ficam guardadas e é ela que o
+  serviço consulta.
+
+FUNÇÕES / DECORADORES
+
+* registrar_integracao(classe)
+  Um decorador do Python. Quando colocado em cima de uma classe de integração (ex:
+  `@registrar_integracao class IntegracaoGontijo...`), ele cria uma instância dessa
+  classe e a adiciona automaticamente ao objeto global `registro`.
+
+FLUXO DO CÓDIGO
+1. Na inicialização do projeto, o arquivo da empresa é lido pelo Python.
+2. O decorador `@registrar_integracao` é disparado e adiciona a instância ao `registro`.
+3. Quando o usuário envia uma requisição, `app/servico.py` chama
+   `registro.identificar(payload)`.
+4. O registro roda o loop e retorna a estratégia que reconheceu os dados.
+
+ARQUIVOS RELACIONADOS
+- app/integrations/base.py: Define o tipo das estratégias manipuladas pelo registro.
+- app/integrations/*.py: Usam `@registrar_integracao` para se auto-cadastrar.
+- app/servico.py: Utiliza o objeto `registro` para identificar cada viagem recebida.
+- tests/test_extensibilidade.py: Testa a facilidade de registrar e remover novas
+  empresas neste catálogo.
+
+RESUMO
+O app/integrations/registry.py é o catálogo inteligente do sistema, responsável por
+cadastrar as viações disponíveis e localizar qual delas sabe lidar com a viagem
+recebida, eliminando comandos condicionais engessados.

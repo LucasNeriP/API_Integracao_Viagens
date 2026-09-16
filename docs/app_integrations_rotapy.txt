@@ -1,0 +1,66 @@
+ARQUIVO: app/integrations/rota.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo é o tradutor dos dados da empresa Rota Transportes. Ele compreende o
+estilo específico utilizado por essa viação: nomes em snake_case (com sublinhado),
+objetos aninhados para origem e destino ("municipio" e "estado"), tarifas enviadas
+em centavos inteiros (ex: 8990 centavos) e o campo exclusivo `trip_id`.
+
+COMO ELE FUNCIONA
+Ele implementa a classe `IntegracaoRota`, decorada com `@registrar_integracao`.
+1. Para reconhecer: verifica se existe a chave `trip_id`.
+2. Para validar: confere se todos os campos principais e os objetos aninhados
+   "origem" e "destino" estão presentes, converte os centavos para reais e checa
+   as regras gerais de viagem.
+3. Para normalizar: monta a viagem no formato homogêneo.
+
+CLASSES E MÉTODOS
+
+* IntegracaoRota(IntegracaoCompanhia)
+  Classe de estratégia da Rota Transportes.
+
+  Atributos e Constantes:
+  - nome_empresa = "Rota Transportes": nome padrão devolvido na API.
+  - CAMPOS_OBRIGATORIOS: lista dos campos exigidos ("trip_id", "origem", "destino",
+    "partida_em", "chegada_em", "duracao_minutos", "tarifa_centavos", "moeda",
+    "classe", "vagas").
+  - NOMES_DOS_CAMPOS: nomes dos campos mapeados para mensagens de erro em caso de
+    inconsistência.
+
+  Métodos:
+  - reconhecer(payload: dict) -> bool
+    Retorna True se `trip_id` estiver presente no objeto JSON.
+  - _extrair(payload: dict) -> dict
+    Método auxiliar que desempacota e converte os campos da Rota:
+    * Origem e Destino: extrai "municipio" e "estado" dos objetos aninhados.
+    * Datas de saída e chegada: interpretadas de strings ISO 8601.
+    * Duração de "duracao_minutos": lida como número inteiro de minutos.
+    * Preço de "tarifa_centavos": convertido dividindo os centavos por 100
+      (ex: 8990 centavos viram 89.90 reais).
+    * Categoria de "classe" (ex: "convencional"): normalizada para as categorias
+      oficiais.
+    * Assentos de "vagas": convertidos para número inteiro.
+  - validar(payload: dict) -> None
+    Verifica a obrigatoriedade dos campos e invoca `aplicar_regras_comuns()`.
+  - normalizar(payload: dict) -> dict
+    Gera o dicionário final padronizado através de `montar_viagem_normalizada()`.
+
+FLUXO DO CÓDIGO
+1. Na inicialização, a classe é carregada e adicionada ao `registro`.
+2. Quando um payload contém `trip_id`, a Rota Transportes assume o processamento.
+3. `validar()` confere se os centavos, datas e locais de embarque/desembarque estão
+   corretos.
+4. `normalizar()` formata a viagem no modelo oficial da API.
+
+ARQUIVOS RELACIONADOS
+- app/integrations/base.py: Define a interface base.
+- app/integrations/registry.py: Registra a estratégia.
+- app/normalizacao.py: Fornece `preco_de_centavos`, `interpretar_data_iso` e
+  `aplicar_regras_comuns`.
+- app/schemas.py: Fornece `montar_viagem_normalizada`.
+- tests/test_rota.py: Contém os testes automatizados da Rota Transportes.
+
+RESUMO
+O app/integrations/rota.py lida com o formato da Rota Transportes, transformando
+valores enviados em centavos e estruturas com objetos de município/estado no padrão
+comum da aplicação.

@@ -1,0 +1,50 @@
+ARQUIVO: tests/test_rota.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo contém os testes automatizados dedicados à empresa Rota Transportes.
+Ele confere se os dados da Rota são normalizados corretamente, se os valores em
+centavos são convertidos para reais com perfeição e se inconsistências cronológicas
+ou dados incompletos em objetos aninhados são rejeitados adequadamente.
+
+COMO ELE FUNCIONA
+Ele faz requisições POST para a rota `/api/v1/viagens/normalizar` com o
+`PAYLOAD_ROTA`. Para testar falhas, cria cópias modificadas usando `deepcopy` e
+inspeciona a resposta de status HTTP e os detalhes do erro retornado.
+
+TESTES IMPLEMENTADOS
+
+* test_normaliza_payload_da_rota(cliente)
+  Envia o payload completo da Rota Transportes e confere se a resposta devolve
+  status 200 e bate 100% com o gabarito `VIAGEM_ROTA`.
+
+* test_converte_tarifa_de_centavos_para_reais(cliente)
+  A Rota envia a tarifa em centavos inteiros (`tarifa_centavos`: 8990). O teste
+  verifica se a API transformou o valor em reais (`89.90`), garantindo que o cálculo
+  de divisão por 100 ocorreu com precisão.
+
+* test_rejeita_chegada_anterior_a_saida_na_rota(cliente)
+  Altera a data de chegada para que seja mais cedo que a saída (saída às 07:00 e
+  chegada às 06:00 do mesmo dia).
+  Verifica se a API barra a viagem com status 422 e devolve a mensagem clara:
+  - indice: 0
+  - empresa_identificada: "Rota Transportes"
+  - campo: "chegada_em"
+  - mensagem: "A data de chegada deve ser posterior à data de saída."
+
+* test_rejeita_objeto_de_origem_incompleto_na_rota(cliente)
+  Deleta a chave "municipio" de dentro do objeto aninhado "origem".
+  Verifica se a API identifica a falta do sub-campo e acusa erro com status 422
+  apontando o campo aninhado no formato dot-notation: "origem.municipio".
+
+FLUXO DO CÓDIGO
+O Pytest chama cada função do arquivo, conferindo o comportamento esperado da API
+para situações normais e situações de erro na integração da Rota.
+
+ARQUIVOS RELACIONADOS
+- app/integrations/rota.py: Código da integração testada.
+- tests/exemplos.py: Fornece `PAYLOAD_ROTA` e `VIAGEM_ROTA`.
+
+RESUMO
+O tests/test_rota.py assegura que a integração da Rota Transportes funcione sem
+erros, validando a conversão de centavos em reais, o bloqueio de horários invertidos
+e a verificação de sub-campos aninhados.

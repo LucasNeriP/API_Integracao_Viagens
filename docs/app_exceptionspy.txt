@@ -1,0 +1,57 @@
+ARQUIVO: app/exceptions.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo define as exceções personalizadas (erros customizados) da aplicação.
+Em vez de deixar o programa quebrar com erros genéricos do Python, usamos essas
+classes para carregar informações úteis sobre o que deu errado (como qual campo
+falhou, qual empresa estava sendo processada e qual era a posição do item).
+
+COMO ELE FUNCIONA
+Ele cria duas classes que herdam de `Exception` (a classe mãe de todos os erros em
+Python). Quando um dado inconsistente é detectado, o código "levanta" (raise) uma
+dessas exceções guardando os detalhes do erro para que as camadas superiores possam
+tratá-lo de maneira elegante.
+
+CLASSES DE EXCEÇÃO
+
+* ViagemInvalidaError(Exception)
+  É usada no nível das estratégias de cada empresa (dentro de `app/integrations/`
+  e `app/normalizacao.py`).
+  Quando uma empresa tenta validar seus dados e encontra algo errado (como uma
+  data inválida, duração negativa ou campo ausente), ela levanta este erro.
+  Atributos:
+  - campo: nome do campo específico que continha o erro (ex: "valorPassagem").
+  - mensagem: texto claro e humano explicando o motivo do problema.
+
+* FalhaNaNormalizacao(Exception)
+  É usada no nível do serviço principal (`app/servico.py`).
+  Quando o serviço recebe um erro `ViagemInvalidaError` ou percebe que um payload
+  não pertence a nenhuma empresa conhecida, ele "embrulha" esse erro dentro de
+  `FalhaNaNormalizacao`, adicionando o contexto da lista (o índice do item).
+  Atributos:
+  - indice: a posição numérica do item com problema na lista enviada (0 para o
+    primeiro item, 1 para o segundo, etc.).
+  - empresa_identificada: nome da empresa identificada (ou None se o formato for
+    desconhecido).
+  - campo: nome do campo que falhou.
+  - mensagem: explicação humana do erro.
+
+FLUXO DO CÓDIGO
+1. Durante a validação de um item, `app/normalizacao.py` ou uma integração levanta
+   `ViagemInvalidaError(campo="preco", mensagem="O preço deve ser maior que zero.")`.
+2. Em `app/servico.py`, esse erro é capturado no bloco `except ViagemInvalidaError`.
+3. O serviço cria uma `FalhaNaNormalizacao` contendo o índice atual do loop e o
+   nome da empresa, e a lança novamente.
+4. Em `app/main.py`, o manipulador de exceções captura `FalhaNaNormalizacao` e
+   monta o JSON de resposta com código HTTP 422.
+
+ARQUIVOS RELACIONADOS
+- app/normalizacao.py: Lança `ViagemInvalidaError` quando as regras são violadas.
+- app/integrations/*.py: Lançam `ViagemInvalidaError` quando campos obrigatórios faltam.
+- app/servico.py: Converte `ViagemInvalidaError` em `FalhaNaNormalizacao`.
+- app/main.py: Captura `FalhaNaNormalizacao` e devolve a resposta HTTP 422.
+
+RESUMO
+O app/exceptions.py centraliza os tipos de erro da aplicação, garantindo que
+qualquer falha em dados seja comunicada com clareza, indicando o campo, a empresa e
+o índice do item com problema.

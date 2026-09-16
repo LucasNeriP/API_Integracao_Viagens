@@ -1,0 +1,62 @@
+ARQUIVO: app/integrations/sertao_bus.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo representa uma companhia fictícia chamada "Sertão Bus". Sua finalidade
+principal no projeto é demonstrar a extensibilidade e o poder do design adotado: ele
+prova que é possível adicionar uma empresa completamente diferente sem encostar em
+nenhum outro arquivo do sistema.
+
+COMO ELE FUNCIONA
+Ele implementa a classe `IntegracaoSertaoBus`, decorada com `@registrar_integracao`.
+A Sertão Bus possui um estilo bem diferente das outras três viações:
+- Ela envia a rota no formato de texto combinado: "Paulo Afonso/BA" e "Maceió/AL";
+- Ela envia a duração em horas com casas decimais (ex: 5.5 horas);
+- Os horários vêm agrupados dentro de um objeto chamado "horarios" ("saida" e "chegada");
+- O código da viagem chama-se "numero";
+- A categoria chama-se "servico" (ex: "EXEC").
+O arquivo lida com todas essas peculiaridades e entrega o mesmo contrato homogêneo.
+
+CLASSES E MÉTODOS
+
+* IntegracaoSertaoBus(IntegracaoCompanhia)
+  Classe de estratégia da Sertão Bus.
+
+  Atributos e Constantes:
+  - nome_empresa = "Sertão Bus": nome exibido no contrato final.
+  - CAMPOS_OBRIGATORIOS: lista dos campos necessários ("numero", "rota", "horarios",
+    "duracao_horas", "preco_total", "moeda", "servico", "lugares_livres").
+  - NOMES_DOS_CAMPOS: nomes mapeados para mensagens de erro.
+
+  Métodos:
+  - reconhecer(payload: dict) -> bool
+    Retorna True se o campo `duracao_horas` estiver presente no payload (característica
+    exclusiva desta viação).
+  - _extrair(payload: dict) -> dict
+    Método interno que processa as estruturas da Sertão Bus:
+    * Separa "Cidade/UF" usando a função `separar_cidade_e_uf()`.
+    * Lê os horários de saída e chegada de dentro do objeto "horarios".
+    * Converte a duração de horas decimais (ex: 5.5) para minutos (330) usando
+      `minutos_de_horas()`.
+    * Converte o preço decimal de "preco_total" (ex: 105.90).
+    * Normaliza a abreviação "EXEC" para "executivo".
+    * Converte "lugares_livres" para número inteiro.
+  - validar(payload: dict) -> None
+    Conferência de campos obrigatórios e chamada a `aplicar_regras_comuns()`.
+  - normalizar(payload: dict) -> dict
+    Chama `montar_viagem_normalizada()` para retornar o formato padronizado.
+
+FLUXO DO CÓDIGO
+1. Ao carregar o módulo, a Sertão Bus entra no catálogo `registro`.
+2. Payloads que contenham `duracao_horas` são direcionados para cá.
+3. As strings de rota com barra ("Cidade/UF") e as horas fracionadas são convertidas.
+4. O resultado final sai idêntico ao das empresas reais.
+
+ARQUIVOS RELACIONADOS
+- app/integrations/base.py e registry.py: Infraestrutura de integração.
+- app/normalizacao.py: Fornece `separar_cidade_e_uf` e `minutos_de_horas`.
+- tests/test_sertao_bus.py: Testes específicos desta empresa.
+
+RESUMO
+O app/integrations/sertao_bus.py é o exemplo vivo de extensibilidade do projeto,
+mostrando como criar uma nova integração com formatos únicos (como rotas 'Cidade/UF'
+e duração em horas fracionadas) de maneira totalmente isolada.

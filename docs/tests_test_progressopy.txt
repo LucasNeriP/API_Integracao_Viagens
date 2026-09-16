@@ -1,0 +1,54 @@
+ARQUIVO: tests/test_progresso.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo reúne os testes automatizados dedicados à Auto Viação Progresso. Ele
+assegura que a API normalize corretamente o payload da Progresso e rejeite com
+precisão situações anômalas, como campos ausentes, datas mal formatadas, preços em
+texto não numérico e durações incompatíveis com os horários.
+
+COMO ELE FUNCIONA
+Ele utiliza o cliente simulado `cliente` para fazer chamadas HTTP POST com o
+`PAYLOAD_PROGRESSO`. Para testar falhas, ele clona o payload original usando
+`deepcopy` e introduz um defeito específico em um dos campos antes de enviar à API.
+
+TESTES IMPLEMENTADOS
+
+* test_normaliza_payload_da_progresso(cliente)
+  Envia o payload completo da Progresso e verifica se a resposta tem código 200 e
+  bate exatamente com o modelo final `VIAGEM_PROGRESSO`.
+
+* test_rejeita_campo_obrigatorio_ausente_na_progresso(cliente)
+  Apaga a chave "cidadeOrigem" do payload.
+  Verifica se a API responde com status 422 e devolve a estrutura exata de erro:
+  - indice: 0
+  - empresa_identificada: "Auto Viação Progresso"
+  - campo: "cidadeOrigem"
+  - mensagem: "O campo cidadeOrigem é obrigatório."
+
+* test_rejeita_data_em_formato_invalido_na_progresso(cliente)
+  Altera a data de saída para um formato que não segue o padrão esperado da Progresso
+  ("2026-10-15T06:30:00" em vez de "15/10/2026 06:30").
+  Verifica se a API rejeita com status 422 e aponta o erro no campo "dataHoraSaida".
+
+* test_rejeita_preco_com_formato_invalido_na_progresso(cliente)
+  Troca o valor numérico da passagem por um texto ("doze reais").
+  Verifica se a API rejeita com status 422 e indica o campo "valorPassagem".
+
+* test_rejeita_duracao_incompativel_na_progresso(cliente)
+  A viagem sai às 06:30 e chega às 12:50 (diferença real de 6 horas e 20 minutos).
+  O teste altera o campo "tempoEstimado" para "01:00".
+  Verifica se a API detecta a incoerência matemática, responde com status 422,
+  aponta o campo "tempoEstimado" e devolve mensagem com a palavra "incompatível".
+
+FLUXO DO CÓDIGO
+O Pytest executa cada função de teste, valida os retornos com `assert` e garante que
+a integração com a Progresso seja robusta contra erros de preenchimento.
+
+ARQUIVOS RELACIONADOS
+- app/integrations/progresso.py: Código da integração sendo testado.
+- tests/exemplos.py: Fornece `PAYLOAD_PROGRESSO` e `VIAGEM_PROGRESSO`.
+
+RESUMO
+O tests/test_progresso.py valida a integração da Auto Viação Progresso, conferindo
+a normalização bem-sucedida e a blindagem contra campos faltantes, datas erradas,
+valores inválidos e horários incoerentes.

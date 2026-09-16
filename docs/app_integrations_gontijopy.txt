@@ -1,0 +1,64 @@
+ARQUIVO: app/integrations/gontijo.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo é o tradutor oficial para os dados da empresa Gontijo. Ele sabe ler o
+formato específico que a Gontijo utiliza (com termos em inglês, campos em camelCase,
+objetos aninhados, datas em UTC e duração em segundos) e convertê-lo para o contrato
+homogêneo da nossa API.
+
+COMO ELE FUNCIONA
+Ele define a classe `IntegracaoGontijo`, decorada com `@registrar_integracao`.
+1. Para reconhecer: verifica se existe a chave `serviceCode` (campo exclusivo da Gontijo).
+2. Para validar: confere se todos os campos obrigatórios e sub-objetos ("from", "to",
+   "fare") existem, extrai os valores e chama as regras de negócio comuns.
+3. Para normalizar: traduz tudo para o formato limpo exigido pela API.
+
+CLASSES E MÉTODOS
+
+* IntegracaoGontijo(IntegracaoCompanhia)
+  Classe de estratégia da Gontijo.
+
+  Atributos e Constantes:
+  - nome_empresa = "Gontijo": nome padronizado retornado na resposta final.
+  - CAMPOS_OBRIGATORIOS: lista com os nomes dos campos que não podem faltar
+    ("serviceCode", "from", "to", "departure", "arrival", "estimatedDurationSeconds",
+    "fare", "serviceClass", "availableSeats").
+  - NOMES_DOS_CAMPOS: mapeamento dos nomes de campos para as mensagens de erro.
+
+  Métodos:
+  - reconhecer(payload: dict) -> bool
+    Retorna True se o campo `serviceCode` estiver presente no dicionário.
+  - _extrair(payload: dict) -> dict
+    Método auxiliar interno que desembrulha os objetos aninhados ("from", "to", "fare"),
+    valida os sub-campos e converte cada tipo de dado:
+    * Datas de "departure" e "arrival": lidas em ISO 8601 (convertendo UTC/Z para
+      o fuso America/Bahia).
+    * Duração de "estimatedDurationSeconds": convertida de segundos para minutos.
+    * Preço de "fare.amount": convertido para decimal com 2 casas.
+    * Categoria de "serviceClass" (ex: "SEMI_SLEEPER"): convertida para a categoria
+      oficial correspondente ("semileito").
+    * Assentos de "availableSeats": convertidos para número inteiro.
+  - validar(payload: dict) -> None
+    Verifica a presença dos campos obrigatórios e submete os dados extraídos às regras
+    gerais em `aplicar_regras_comuns()`.
+  - normalizar(payload: dict) -> dict
+    Chama `montar_viagem_normalizada()` para gerar o dicionário final com datas
+    formatadas em ISO 8601 no fuso America/Bahia.
+
+FLUXO DO CÓDIGO
+1. O arquivo é importado na inicialização e se registra no `registro`.
+2. Ao receber um payload com `serviceCode`, o registro aciona esta classe.
+3. `validar()` confere tipos, sub-objetos e regras gerais.
+4. `normalizar()` gera o formato homogêneo pronto para entrega.
+
+ARQUIVOS RELACIONADOS
+- app/integrations/base.py: Fornece a classe mãe `IntegracaoCompanhia`.
+- app/integrations/registry.py: Fornece o decorador `@registrar_integracao`.
+- app/normalizacao.py: Fornece os utilitários de conversão e checagem de regras.
+- app/schemas.py: Fornece `montar_viagem_normalizada`.
+- tests/test_gontijo.py: Arquivo de testes que valida esta integração.
+
+RESUMO
+O app/integrations/gontijo.py cuida de toda a particularidade dos dados da Gontijo,
+traduzindo termos em inglês, fusos horários em UTC e durações em segundos para o
+padrão único da API.

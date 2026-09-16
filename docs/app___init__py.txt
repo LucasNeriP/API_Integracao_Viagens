@@ -1,0 +1,27 @@
+ARQUIVO: app/__init__.py
+
+FUNÇÃO DO ARQUIVO
+Este arquivo marca o diretório `app` como um pacote oficial do Python. Além disso,
+ele contém uma breve descrição (docstring) explicando o propósito do sistema.
+
+COMO ELE FUNCIONA
+No ecossistema Python, a existência de um arquivo chamado `__init__.py` dentro de uma
+pasta indica ao interpretador que aquela pasta pode ser tratada como um módulo
+importável. Isso permite que outros arquivos do projeto façam comandos como
+`from app.main import app` ou `import app.integrations`.
+
+CONTEÚDO DO ARQUIVO
+O arquivo contém apenas a string descritiva:
+"""API de integração e homogeneidade de dados de transporte rodoviário."""
+
+FLUXO DO CÓDIGO
+Quando qualquer módulo dentro de `app` é importado pela primeira vez, o Python
+executa o `app/__init__.py` antes de carregar o módulo desejado.
+
+ARQUIVOS RELACIONADOS
+- app/main.py, app/servico.py, app/schemas.py, etc.: Todos pertencem ao mesmo pacote
+  iniciado por este arquivo.
+
+RESUMO
+Um arquivo inicializador simples e obrigatório do Python que transforma a pasta `app`
+em um pacote utilizável e documenta seu propósito geral.
