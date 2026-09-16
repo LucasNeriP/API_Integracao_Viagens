@@ -1,32 +1,33 @@
+# Importa ferramentas para criar uma classe abstrata
 from abc import ABC, abstractmethod
 
 
+# Classe base que todas as integrações de empresas devem seguir
 class IntegracaoCompanhia(ABC):
-    """
-    Estratégia de uma companhia.
 
-    Cada companhia sabe:
-    - reconhecer o próprio formato
-    - validar os campos que envia
-    - converter os dados para o contrato homogêneo
-    """
-
+    # Toda integração deve possuir o nome da empresa
     nome_empresa: str
 
+    # Define o método que identifica a empresa
     @abstractmethod
     def reconhecer(self, payload: dict) -> bool:
-        """Retorna True se este payload pertence a esta companhia."""
+        ...
 
+    # Define o método que valida os dados
     @abstractmethod
     def validar(self, payload: dict) -> None:
-        """Levanta ViagemInvalidaError quando o payload for inválido."""
+        ...
 
+    # Define o método que transforma os dados
     @abstractmethod
     def normalizar(self, payload: dict) -> dict:
-        """Converte o payload da companhia para o contrato de saída."""
+        ...
 
+    # Processo comum para todas as empresas
     def processar(self, payload: dict) -> dict:
-        """Sequência comum: validar e, em seguida, normalizar."""
 
+        # Primeiro valida os dados
         self.validar(payload)
+
+        # Depois normaliza os dados
         return self.normalizar(payload)
